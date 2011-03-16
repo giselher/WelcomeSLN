@@ -1,0 +1,8 @@
+ProjectName = "Beispiel01"
+Sources = ["main.cpp", "BinarySearchTree.cpp"]
+Includes = ["BinarySearchTree.h"]
+
+
+# Wird zufallsgeneriernt wenn 'None'
+ProjectGuid = None
+SolutionGuid = None
