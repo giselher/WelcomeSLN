@@ -1,8 +1,7 @@
-Installieren mit 
-./install.sh
 
-und dann mit
-wsln -s Quellverzeichniss -d Zielverzeichniss
+Install with ./install.sh
 
-Das Quellverzeichniss muss die eine WSLNInfo Datei beeinhalten.
-Eine Beispiel Datei ist beigelegt. 
+Copy WSLNInfo file and change the configuration
+and execute with 
+
+	wsln -s source_directory -d destination_directory
