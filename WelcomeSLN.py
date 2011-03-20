@@ -143,7 +143,9 @@ def generate_vcxproj_file(info, path):
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>"""
+</Project>
+
+"""
 	
 	path = _join(path, info.ProjectName)
 	if not os.path.exists(path):
@@ -170,11 +172,18 @@ def generate_vcxproj_file(info, path):
 
 	itemgroup_sources = etree.SubElement(root, prefix+"ItemGroup")
 	for source in info.Sources:
-		etree.SubElement(itemgroup_sources, prefix+"ClCompile", {"Include" : source})
+		etree.SubElement(itemgroup_sources, prefix+"ClCompile", 
+			{"Include" : os.path.basename(source)})
 
 	itemgroup_includes = etree.SubElement(root, prefix+"ItemGroup")
 	for include in info.Includes:
-		etree.SubElement(itemgroup_includes, prefix+"ClInclude", {"Include" : include})
+		etree.SubElement(itemgroup_includes, prefix+"ClInclude", 
+			{"Include" : os.path.basename(include)})
+
+	itemgroup_includes = etree.SubElement(root, prefix+"ItemGroup")
+	for include in info.Resources:
+		etree.SubElement(itemgroup_includes, prefix+"None", 
+			{"Include" : os.path.basename(include)})
 	
 	tree.write(filename)
 	
@@ -228,7 +237,7 @@ def generate_uuids(info):
 		
 def copy_files(info, src, dst):
 	
-	for base in [info.Sources, info.Includes]:
+	for base in [info.Sources, info.Includes, info.Resources]:
 		for source in base:
 			src_path = _join(src, source)
 			if not os.path.exists(src_path):
