@@ -1,8 +1,20 @@
-ProjectName = "Beispiel01"
-Sources = ["main.cpp", "BinarySearchTree.cpp"]
-Includes = ["BinarySearchTree.h"]
-Resources = []
 
-# Wird zufallsgeneriernt wenn 'None'
-ProjectGuid = None
-SolutionGuid = None
+SolutionName = "Uebung 01"
+
+# random generated if None
+SolutionGUID = None
+
+Projects = {
+	"Beispiel01" : {
+		"Sources" : ["main.cpp", "module.cpp"],
+		"Includes" : ["module.h"],
+		"Resources" : [],
+		"GUID" : None
+	},
+	"Beispiel02" : {
+		"Sources" : ["main.cpp", "module.cpp"],
+		"Includes" : ["module.h"],
+		"Resources" : [],
+		"GUID" = None
+	}
+}

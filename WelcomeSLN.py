@@ -54,6 +54,9 @@ def argparsing():
 		action="store", default="./", help="Location of the WSLNInfo and Source files.")
 	parser.add_argument('-d', '--dstdir', dest="dstdir", metavar="DIR", 
 		action="store", default="./MVS", help="Destination of the Visual Studio Solution.")
+		
+	parser.add_argument('-n', '--no-solution', dest="nosolution", 
+		action="store_true", help="Don't generate a Solution file (.sln)")
 	
 	return parser.parse_args()
 
@@ -63,7 +66,7 @@ def import_WSLNInfo_file(filename):
 	
 	return info
 
-def generate_vcxproj_file(info, path):
+def generate_vcxproj_files(info, path):
 	
 	xml_template = """<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -147,111 +150,144 @@ def generate_vcxproj_file(info, path):
 
 """
 	
-	path = _join(path, info.ProjectName)
-	if not os.path.exists(path):
-		os.makedirs(path)
+	back_path = path;
+	
+	for proj in info.Projects:
+		_f= info.Projects[proj]
 		
-	filename = _join(path, info.ProjectName+".vcxproj")
-	
-	tmp = open(filename, "w")
-	tmp.write(xml_template)
-	tmp.close()
-	
-	tree = etree.ElementTree()
-	tree.parse(filename)
-	
-	root = tree.getroot()
-	
-	prefix = root.tag.replace("Project", "")
+		path = _join(back_path, proj)
+		if not os.path.exists(path):
+			os.makedirs(path)
+			
+		filename = _join(path, proj+".vcxproj")
+		
+		tmp = open(filename, "w")
+		tmp.write(xml_template)
+		tmp.close()
+		
+		tree = etree.ElementTree()
+		tree.parse(filename)
+		
+		root = tree.getroot()
+		
+		prefix = root.tag.replace("Project", "")
 
-	for element in root.iter():
-		if element.tag.endswith("RootNamespace"):
-			element.text = info.ProjectName
-		elif element.tag.endswith("ProjectGuid"):
-			element.text = "{%s}" % info.ProjectGuid
+		for element in root.iter():
+			if element.tag.endswith("RootNamespace"):
+				element.text = proj
+			elif element.tag.endswith("ProjectGuid"):
+				element.text = "{%s}" % _f["GUID"]
 
-	itemgroup_sources = etree.SubElement(root, prefix+"ItemGroup")
-	for source in info.Sources:
-		etree.SubElement(itemgroup_sources, prefix+"ClCompile", 
-			{"Include" : os.path.basename(source)})
+		itemgroup_sources = etree.SubElement(root, prefix+"ItemGroup")
+		for source in _f["Sources"]:
+			etree.SubElement(itemgroup_sources, prefix+"ClCompile", 
+				{"Include" : os.path.basename(source)})
 
-	itemgroup_includes = etree.SubElement(root, prefix+"ItemGroup")
-	for include in info.Includes:
-		etree.SubElement(itemgroup_includes, prefix+"ClInclude", 
-			{"Include" : os.path.basename(include)})
+		itemgroup_includes = etree.SubElement(root, prefix+"ItemGroup")
+		for include in _f["Includes"]:
+			etree.SubElement(itemgroup_includes, prefix+"ClInclude", 
+				{"Include" : os.path.basename(include)})
 
-	itemgroup_includes = etree.SubElement(root, prefix+"ItemGroup")
-	for include in info.Resources:
-		etree.SubElement(itemgroup_includes, prefix+"None", 
-			{"Include" : os.path.basename(include)})
-	
-	tree.write(filename)
-	
-	tmp = open(filename, "r")
-	to_replace = tmp.read()
-	tmp.close()
-	
-	to_replace = to_replace.replace("ns0:", "").replace(":ns0", "")
-	tmp = open(filename, "w")
-	tmp.write(to_replace)
+		itemgroup_includes = etree.SubElement(root, prefix+"ItemGroup")
+		for include in _f["Resources"]:
+			etree.SubElement(itemgroup_includes, prefix+"None", 
+				{"Include" : os.path.basename(include)})
+		
+		tree.write(filename)
+		
+		tmp = open(filename, "r")
+		to_replace = tmp.read()
+		tmp.close()
+		
+		to_replace = to_replace.replace("ns0:", "").replace(":ns0", "")
+		tmp = open(filename, "w")
+		tmp.write(to_replace)
 
 def generate_sln_file(info, path):
 	
 	sln_template = """
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{SolutionGuid}") = "{ProjectName}", "{ProjectName}\{ProjectName}.vcxproj", "{ProjectGuid}"
-EndProject
+{Path}
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{ProjectGuid}.Debug|Win32.ActiveCfg = Debug|Win32
-		{ProjectGuid}.Debug|Win32.Build.0 = Debug|Win32
-		{ProjectGuid}.Release|Win32.ActiveCfg = Release|Win32
-		{ProjectGuid}.Release|Win32.Build.0 = Release|Win32
+		{Projects}
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal
 """
-	sln = sln_template.format(ProjectName=info.ProjectName,
-	                    ProjectGuid='{%s}' % info.ProjectGuid,
-	                    SolutionGuid='{%s}' % info.SolutionGuid)
+	path_template = """
+Project("{SolutionGuid}") = "{ProjectName}", "{ProjectName}\{ProjectName}.vcxproj", "{ProjectGuid}"
+EndProject
+"""
+	
+	build_template = """
+{ProjectGuid}.Debug|Win32.ActiveCfg = Debug|Win32
+{ProjectGuid}.Debug|Win32.Build.0 = Debug|Win32
+{ProjectGuid}.Release|Win32.ActiveCfg = Release|Win32
+{ProjectGuid}.Release|Win32.Build.0 = Release|Win32
+"""
+	
+	path_part = ""
+	build_part = ""
+	
+	
+	for proj in info.Projects:
+		path_part += path_template.format(SolutionGuid='{%s}' % info.SolutionGUID,
+			ProjectName=proj, ProjectGuid=info.Projects[proj]["GUID"])
+		build_part += build_template.format(ProjectGuid='{%s}' % info.Projects[proj]["GUID"]) 
+		
+	
+	sln = sln_template.format(Path=path_part,
+	                    Projects=build_part,
+	                    SolutionGuid='{%s}' % info.SolutionGUID)
 	                    
-	stream = open(_join(path, info.ProjectName+".sln"), "w")
+	stream = open(_join(path, info.SolutionName+".sln"), "w")
 	stream.write(sln)
 	stream.close()
 	
 
 def generate_uuids(info):
-	
-	if info.ProjectGuid is None:
-		info.ProjectGuid = str(uuid.uuid4()).upper()
 
-	if info.SolutionGuid is None:
-		info.SolutionGuid = str(uuid.uuid4()).upper()
+	for proj in info.Projects:
+		if info.Projects[proj]["GUID"] is None:
+			info.Projects[proj]["GUID"] = str(uuid.uuid4()).upper()
+
+	if info.SolutionGUID is None:
+		info.SolutionGUID = str(uuid.uuid4()).upper()
 		
 def copy_files(info, src, dst):
 	
-	for base in [info.Sources, info.Includes, info.Resources]:
-		for source in base:
-			src_path = _join(src, source)
-			if not os.path.exists(src_path):
-				print("File %s doesn't exist." % src_path)
-				exit(1)
-			
-			shutil.copy(src_path, _join(dst, info.ProjectName))
+	for proj in info.Projects:
+		_f = info.Projects[proj]
+		for base in [_f["Sources"], _f["Includes"], _f["Resources"]]:
+			for source in base:
+				src_path = _join(src, proj)
+				src_path = _join(src_path, source)
+				if not os.path.exists(src_path):
+					print("File %s doesn't exist." % src_path)
+					exit(1)
+				
+				shutil.copy(src_path, _join(dst, proj))
 
 if __name__ == "__main__":
 	args = argparsing()
 	info = import_WSLNInfo_file(os.path.join(args.srcdir, "WSLNInfo")) 
+	
+	
 	if not os.path.exists(args.dstdir):
 		os.makedirs(args.dstdir)
+		
 	generate_uuids(info)
-	generate_vcxproj_file(info, args.dstdir)
-	generate_sln_file(info, args.dstdir)
+	generate_vcxproj_files(info, args.dstdir)
+
+	if not args.nosolution:
+		generate_sln_file(info, args.dstdir)
+		
 	copy_files(info, args.srcdir, args.dstdir)
