@@ -1,4 +1,3 @@
-
 SolutionName = "Uebung 01"
 
 # random generated if None
@@ -15,6 +14,6 @@ Projects = {
 		"Sources" : ["main.cpp", "module.cpp"],
 		"Includes" : ["module.h"],
 		"Resources" : [],
-		"GUID" = None
+		"GUID" : None
 	}
 }
